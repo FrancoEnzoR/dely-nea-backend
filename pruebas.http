@@ -1,0 +1,55 @@
+### Probar registro de usuario
+POST http://localhost:3000/registro
+Content-Type: application/json
+
+{
+  "nombre": "Fran Test",
+  "email": "fran@delynea.com",
+  "telefono": "3624000001",
+  "password": "123456"
+}
+### Probar login
+POST http://localhost:3000/login
+Content-Type: application/json
+
+{
+  "email": "fran@delynea.com",
+  "password": "123456"
+}
+### Crear comercio
+POST http://localhost:3000/comercios
+Content-Type: application/json
+
+{
+  "nombre": "La Leñera Pizzas",
+  "descripcion": "Las mejores pizzas de Resistencia",
+  "categoria_id": 1,
+  "direccion": "Av. Sarmiento 1240, Resistencia",
+  "telefono": "3624111222",
+  "email": "lalenera@delynea.com"
+}
+
+### Ver todos los comercios
+GET http://localhost:3000/comercios
+### Crear pedido
+POST http://localhost:3000/pedidos
+Content-Type: application/json
+
+{
+  "usuario_id": "082b5be6-467e-4a36-86e2-b97d81a33dcb",
+  "comercio_id": "194996e6-082b-4179-8b67-c56923b7da3a",
+  "direccion_entrega": "Av. Italia 890, Resistencia",
+  "notas": "Sin cebolla por favor",
+  "items": [
+    {
+      "nombre": "Pizza Muzzarella",
+      "cantidad": 1,
+      "precio_unitario": 2800
+    },
+    {
+      "nombre": "Empanadas x6",
+      "cantidad": 2,
+      "precio_unitario": 2100
+    }
+  ]
+}
