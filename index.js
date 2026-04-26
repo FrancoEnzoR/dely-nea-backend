@@ -133,6 +133,56 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Login con Google
+app.post('/login-google', async (req, res) => {
+  try {
+    const { nombre, email, google_id } = req.body;
+
+    const { data: usuarioExistente } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    let usuario;
+
+    if (usuarioExistente) {
+      usuario = usuarioExistente;
+    } else {
+      const { data: nuevoUsuario, error } = await supabase
+        .from('usuarios')
+        .insert([{
+          nombre,
+          email,
+          telefono: 'google',
+          password: await bcrypt.hash(google_id, 10),
+          verificado: true,
+          rol: 'cliente'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      usuario = nuevoUsuario;
+    }
+
+    const token = jwt.sign(
+      { id: usuario.id, email: usuario.email, rol: usuario.rol },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      mensaje: '✅ Login con Google exitoso!',
+      token,
+      usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Obtener todos los comercios
 app.get('/comercios', async (req, res) => {
   try {
@@ -259,58 +309,6 @@ app.patch('/pedidos/:id/estado', async (req, res) => {
 });
 
 // Iniciar servidor
-// Login con Google
-app.post('/login-google', async (req, res) => {
-  try {
-    const { nombre, email, google_id } = req.body;
-
-    // Verificar si el usuario ya existe
-    const { data: usuarioExistente } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('email', email)
-      .single();
-
-    let usuario;
-
-    if (usuarioExistente) {
-      // Ya existe, simplemente loguear
-      usuario = usuarioExistente;
-    } else {
-      // No existe, crear nuevo usuario
-      const { data: nuevoUsuario, error } = await supabase
-        .from('usuarios')
-        .insert([{
-          nombre,
-          email,
-          telefono: 'google',
-          password: await bcrypt.hash(google_id, 10),
-          verificado: true,
-          rol: 'cliente'
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      usuario = nuevoUsuario;
-    }
-
-    const token = jwt.sign(
-      { id: usuario.id, email: usuario.email, rol: usuario.rol },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      mensaje: '✅ Login con Google exitoso!',
-      token,
-      usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
   console.log(`🗄️ Supabase conectado: ${process.env.SUPABASE_URL}`);
