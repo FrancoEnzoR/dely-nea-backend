@@ -8,6 +8,7 @@ Content-Type: application/json
   "telefono": "3624000001",
   "password": "123456"
 }
+
 ### Probar login
 POST http://localhost:3000/login
 Content-Type: application/json
@@ -16,6 +17,7 @@ Content-Type: application/json
   "email": "fran@delynea.com",
   "password": "123456"
 }
+
 ### Crear comercio
 POST http://localhost:3000/comercios
 Content-Type: application/json
@@ -31,6 +33,7 @@ Content-Type: application/json
 
 ### Ver todos los comercios
 GET http://localhost:3000/comercios
+
 ### Crear pedido
 POST http://localhost:3000/pedidos
 Content-Type: application/json
@@ -52,4 +55,15 @@ Content-Type: application/json
       "precio_unitario": 2100
     }
   ]
+}
+
+### Probar registro con email
+POST http://localhost:3000/registro
+Content-Type: application/json
+
+{
+  "nombre": "Test Verificacion",
+  "email": "enzifran18@gmail.com",
+  "telefono": "3482223801",
+  "password": "123456"
 }
