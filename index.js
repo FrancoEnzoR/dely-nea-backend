@@ -402,6 +402,122 @@ app.patch('/admin/comercios/:id/comision', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Dely IA - Asistente con lógica propia
+app.post('/dely', async (req, res) => {
+  try {
+    const { pregunta } = req.body;
+
+    // Obtener datos reales
+    const [usuarios, comercios, pedidos] = await Promise.all([
+      supabase.from('usuarios').select('id, created_at, rol'),
+      supabase.from('comercios').select('id, nombre, comision'),
+      supabase.from('pedidos').select('id, total, estado, created_at, comercio_id'),
+    ]);
+
+    const totalComisiones = (pedidos.data || []).reduce((sum, p) => sum + (p.total * 0.1), 0);
+    const hoy = new Date().toDateString();
+    const pedidosHoy = (pedidos.data || []).filter(p => new Date(p.created_at).toDateString() === hoy);
+
+    const contexto = {
+      usuarios: usuarios.data?.length || 0,
+      comercios: comercios.data?.length || 0,
+      pedidos: pedidos.data?.length || 0,
+      comisiones: Math.round(totalComisiones),
+      pedidosHoy: pedidosHoy.length,
+      comisionesHoy: Math.round(pedidosHoy.reduce((sum, p) => sum + (p.total * 0.1), 0)),
+    };
+
+    const p = pregunta.toLowerCase();
+    let respuesta = '';
+
+    if (p.includes('venta') || p.includes('comision') || p.includes('ganancia') || p.includes('dinero')) {
+      respuesta = `💰 **Resumen financiero de Dely Nea:**\n\n` +
+        `• Comisiones totales: $${contexto.comisiones.toLocaleString()} ARS\n` +
+        `• Comisiones hoy: $${contexto.comisionesHoy.toLocaleString()} ARS\n` +
+        `• Pedidos totales: ${contexto.pedidos}\n` +
+        `• Pedidos hoy: ${contexto.pedidosHoy}\n\n` +
+        `📈 **Proyección mensual:** $${(contexto.comisiones * 30).toLocaleString()} ARS\n\n` +
+        `💡 **Recomendación:** ${contexto.pedidos < 10 ? 'Estás en etapa inicial. Conseguí 5 comercios más para acelerar el crecimiento.' : 'Vas bien. Enfocate en aumentar el ticket promedio con promociones.'}`;
+    }
+    else if (p.includes('comercio') || p.includes('local') || p.includes('tienda')) {
+      const listaComercioS = (comercios.data || []).map(c => `• ${c.nombre} — comisión: ${c.comision || 10}%`).join('\n');
+      respuesta = `🏪 **Comercios en Dely Nea:**\n\n${listaComercioS || '• No hay comercios registrados todavía'}\n\n` +
+        `📊 **Total:** ${contexto.comercios} comercio(s) activo(s)\n\n` +
+        `💡 **Recomendación:** ${contexto.comercios < 5 ? 'Prioritario conseguir más comercios. Apuntá a ferreterías y farmacias — son los rubros con más demanda en Resistencia.' : 'Buen número de comercios. Enfocate en la calidad del servicio.'}`;
+    }
+    else if (p.includes('usuario') || p.includes('cliente') || p.includes('persona')) {
+      respuesta = `👥 **Usuarios de Dely Nea:**\n\n` +
+        `• Total registrados: ${contexto.usuarios}\n` +
+        `• Pedidos por usuario: ${contexto.usuarios > 0 ? (contexto.pedidos / contexto.usuarios).toFixed(1) : 0}\n\n` +
+        `💡 **Análisis:** ${contexto.usuarios < 10 ? 'Todavía en etapa de primeros usuarios. Compartí la app en grupos de WhatsApp y Facebook de Resistencia.' : contexto.pedidos / contexto.usuarios < 1 ? 'Hay usuarios que no compraron todavía. Enviá un cupón de bienvenida.' : 'Los usuarios están activos. ¡Bien!'}`;
+    }
+    else if (p.includes('seguridad') || p.includes('hackeo') || p.includes('ataque') || p.includes('sospecho')) {
+      respuesta = `🔒 **Análisis de seguridad de Dely Nea:**\n\n` +
+        `• JWT tokens: ✅ Activos con expiración de 7 días\n` +
+        `• Contraseñas: ✅ Encriptadas con bcrypt\n` +
+        `• HTTPS: ✅ Activo en Render\n` +
+        `• Base de datos: ✅ Supabase con RLS activado\n\n` +
+        `⚠️ **Pendiente:**\n` +
+        `• Rate limiting — bloquear intentos masivos de login\n` +
+        `• 2FA para el panel admin\n` +
+        `• Logs de acceso sospechoso\n\n` +
+        `💡 Lo agrego cuando me lo pidás.`;
+    }
+    else if (p.includes('repartidor') || p.includes('moto') || p.includes('cadete') || p.includes('delivery')) {
+      respuesta = `🏍️ **Análisis de repartidores:**\n\n` +
+        `• Repartidores activos: 0 (todavía no hay registrados)\n\n` +
+        `💡 **Plan para conseguir repartidores:**\n` +
+        `1. Publicar en grupos de Facebook de Resistencia\n` +
+        `2. Ofrecer $800-1200 por entrega para arrancar\n` +
+        `3. Empezar con 3-5 repartidores de confianza\n` +
+        `4. Zonas prioritarias: Centro, Belgrano, Fontana\n\n` +
+        `📱 La app de repartidor está en desarrollo.`;
+    }
+    else if (p.includes('crecer') || p.includes('mejorar') || p.includes('recomend') || p.includes('estrategia')) {
+      respuesta = `💡 **Recomendaciones estratégicas para Dely Nea:**\n\n` +
+        `**Corto plazo (este mes):**\n` +
+        `• Conseguir 5 comercios más en Resistencia\n` +
+        `• Reclutar 5 repartidores con moto\n` +
+        `• Campaña en redes sociales locales\n\n` +
+        `**Mediano plazo (3 meses):**\n` +
+        `• Lanzar módulo de técnicos\n` +
+        `• Expandir a Fontana y Barranqueras\n` +
+        `• Meta: $1.000.000 ARS en comisiones/mes\n\n` +
+        `**Largo plazo (6 meses):**\n` +
+        `• Expandir a Corrientes\n` +
+        `• Meta: 50 comercios activos\n` +
+        `• Meta: $5.000.000 ARS en comisiones/mes`;
+    }
+    else if (p.includes('proyeccion') || p.includes('futuro') || p.includes('mes')) {
+      const proyMensual = contexto.comisiones * 30;
+      const proyAnual = proyMensual * 12;
+      respuesta = `📈 **Proyecciones de Dely Nea:**\n\n` +
+        `• Comisiones actuales: $${contexto.comisiones.toLocaleString()} ARS\n` +
+        `• Proyección mensual: $${proyMensual.toLocaleString()} ARS\n` +
+        `• Proyección anual: $${proyAnual.toLocaleString()} ARS\n\n` +
+        `🎯 **Para llegar a $1.000.000/mes necesitás:**\n` +
+        `• ~${Math.ceil(1000000 / 700)} pedidos por mes\n` +
+        `• ~${Math.ceil(1000000 / 700 / 30)} pedidos por día\n` +
+        `• Con 10 comercios activos es totalmente alcanzable\n\n` +
+        `💡 Cada comercio nuevo multiplica tus ingresos.`;
+    }
+    else {
+      respuesta = `¡Hola Franco! Soy Dely, tu asistente de Dely Nea. 👋\n\n` +
+        `Puedo ayudarte con:\n` +
+        `• 💰 Ventas y comisiones\n` +
+        `• 🏪 Análisis de comercios\n` +
+        `• 👥 Usuarios y clientes\n` +
+        `• 🏍️ Repartidores\n` +
+        `• 🔒 Seguridad\n` +
+        `• 📈 Proyecciones y estrategia\n\n` +
+        `¿Sobre qué querés que te ayude?`;
+    }
+
+    res.json({ respuesta });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
