@@ -308,6 +308,63 @@ app.patch('/pedidos/:id/estado', async (req, res) => {
   }
 });
 
+// Estadísticas generales para el panel admin
+app.get('/admin/stats', async (req, res) => {
+  try {
+    const [usuarios, comercios, pedidos] = await Promise.all([
+      supabase.from('usuarios').select('id, created_at, rol'),
+      supabase.from('comercios').select('id, nombre, categoria_id, created_at'),
+      supabase.from('pedidos').select('id, total, estado, created_at, comercio_id'),
+    ]);
+
+    const totalComisiones = (pedidos.data || []).reduce((sum, p) => sum + (p.total * 0.1), 0);
+    const pedidosHoy = (pedidos.data || []).filter(p => {
+      const hoy = new Date().toDateString();
+      return new Date(p.created_at).toDateString() === hoy;
+    });
+
+    res.json({
+      usuarios: usuarios.data?.length || 0,
+      comercios: comercios.data?.length || 0,
+      pedidos: pedidos.data?.length || 0,
+      comisiones: Math.round(totalComisiones),
+      pedidosHoy: pedidosHoy.length,
+      comisionesHoy: Math.round(pedidosHoy.reduce((sum, p) => sum + (p.total * 0.1), 0)),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Pedidos por comercio
+app.get('/admin/comercios/stats', async (req, res) => {
+  try {
+    const { data: comercios } = await supabase
+      .from('comercios')
+      .select('id, nombre, categoria_id');
+
+    const { data: pedidos } = await supabase
+      .from('pedidos')
+      .select('comercio_id, total, estado');
+
+    const stats = comercios.map(c => {
+      const pedidosComercio = pedidos.filter(p => p.comercio_id === c.id);
+      const totalVentas = pedidosComercio.reduce((sum, p) => sum + p.total, 0);
+      const comisiones = Math.round(totalVentas * 0.1);
+      return {
+        id: c.id,
+        nombre: c.nombre,
+        pedidos: pedidosComercio.length,
+        ventas: totalVentas,
+        comisiones,
+      };
+    });
+
+    res.json({ comercios: stats });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
