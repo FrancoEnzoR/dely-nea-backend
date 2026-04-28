@@ -365,6 +365,43 @@ app.get('/admin/comercios/stats', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Actualizar comisión de un comercio (protegida)
+app.patch('/admin/comercios/:id/comision', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { comision, notas_admin, codigo_admin } = req.body;
+
+    // Verificación simple con código admin
+    if (codigo_admin !== process.env.ADMIN_CODE) {
+      return res.status(401).json({ error: 'Código de administrador incorrecto' });
+    }
+
+    if (comision < 0 || comision > 50) {
+      return res.status(400).json({ error: 'La comisión debe estar entre 0% y 50%' });
+    }
+
+    const { data, error } = await supabase
+      .from('comercios')
+      .update({
+        comision,
+        notas_admin,
+        comision_actualizada_at: new Date(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      mensaje: `✅ Comisión actualizada a ${comision}% para ${data.nombre}`,
+      comercio: data,
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
