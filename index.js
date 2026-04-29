@@ -518,6 +518,72 @@ app.post('/dely', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Registro de repartidor
+app.post('/repartidores/registro', async (req, res) => {
+  try {
+    const {
+      nombre, email, telefono, dni, direccion,
+      tipo_vehiculo, marca_moto, modelo_moto, anio_moto, patente,
+      zonas, tiene_foto_perfil, tiene_dni, tiene_carnet,
+      tiene_foto_moto, tiene_seguro, tiene_vtv
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from('repartidores')
+      .insert([{
+        nombre, email, telefono, dni, direccion,
+        tipo_vehiculo, marca_moto, modelo_moto,
+        anio_moto, patente,
+        zonas: zonas.join(', '),
+        tiene_foto_perfil, tiene_dni, tiene_carnet,
+        tiene_foto_moto, tiene_seguro, tiene_vtv,
+        estado: 'pendiente',
+      }])
+      .select();
+
+    if (error) throw error;
+
+    res.json({
+      mensaje: '✅ Solicitud de repartidor recibida',
+      id: data[0].id,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Registro de técnico
+app.post('/tecnicos/registro', async (req, res) => {
+  try {
+    const {
+      nombre, email, telefono, dni, direccion,
+      descripcion, anios_experiencia, tarifa_hora,
+      especialidades, zonas,
+      tiene_foto_perfil, tiene_dni, tiene_certificado, tiene_portfolio
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from('tecnicos')
+      .insert([{
+        nombre, email, telefono, dni, direccion,
+        descripcion, anios_experiencia, tarifa_hora,
+        especialidades: especialidades.join(', '),
+        zonas: zonas.join(', '),
+        tiene_foto_perfil, tiene_dni, tiene_certificado, tiene_portfolio,
+        estado: 'pendiente_entrevista',
+      }])
+      .select();
+
+    if (error) throw error;
+
+    res.json({
+      mensaje: '✅ Solicitud de técnico recibida',
+      id: data[0].id,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
