@@ -584,6 +584,69 @@ app.post('/tecnicos/registro', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Admin - ver repartidores
+app.get('/admin/repartidores', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('repartidores')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ repartidores: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin - ver técnicos
+app.get('/admin/tecnicos', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('tecnicos')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ tecnicos: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin - cambiar estado repartidor
+app.patch('/admin/repartidores/:id/estado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    const { data, error } = await supabase
+      .from('repartidores')
+      .update({ estado })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: `✅ Estado actualizado a ${estado}`, repartidor: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin - cambiar estado técnico
+app.patch('/admin/tecnicos/:id/estado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    const { data, error } = await supabase
+      .from('tecnicos')
+      .update({ estado })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: `✅ Estado actualizado a ${estado}`, tecnico: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
