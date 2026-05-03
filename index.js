@@ -665,10 +665,10 @@ app.get('/ofertas', async (req, res) => {
 // Crear oferta
 app.post('/ofertas', async (req, res) => {
   try {
-    const { titulo, subtitulo, emoji, color, btn_texto, orden } = req.body;
+    const { titulo, subtitulo, emoji, color, btn_texto, orden, imagen_url, etiqueta } = req.body;
     const { data, error } = await supabase
       .from('ofertas')
-      .insert([{ titulo, subtitulo, emoji, color, btn_texto, orden, activo: true }])
+      .insert([{ titulo, subtitulo, emoji, color, btn_texto, orden, imagen_url, etiqueta, activo: true }])
       .select();
     if (error) throw error;
     res.json({ mensaje: '✅ Oferta creada', oferta: data[0] });
@@ -681,10 +681,10 @@ app.post('/ofertas', async (req, res) => {
 app.patch('/ofertas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { activo, titulo, subtitulo, emoji, color, btn_texto } = req.body;
+    const updates = req.body;
     const { data, error } = await supabase
       .from('ofertas')
-      .update({ activo, titulo, subtitulo, emoji, color, btn_texto })
+      .update(updates)
       .eq('id', id)
       .select();
     if (error) throw error;
