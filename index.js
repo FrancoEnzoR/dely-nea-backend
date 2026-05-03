@@ -647,6 +647,67 @@ app.patch('/admin/tecnicos/:id/estado', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Obtener ofertas activas
+app.get('/ofertas', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('ofertas')
+      .select('*')
+      .eq('activo', true)
+      .order('orden');
+    if (error) throw error;
+    res.json({ ofertas: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Crear oferta
+app.post('/ofertas', async (req, res) => {
+  try {
+    const { titulo, subtitulo, emoji, color, btn_texto, orden } = req.body;
+    const { data, error } = await supabase
+      .from('ofertas')
+      .insert([{ titulo, subtitulo, emoji, color, btn_texto, orden, activo: true }])
+      .select();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Oferta creada', oferta: data[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Actualizar oferta
+app.patch('/ofertas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { activo, titulo, subtitulo, emoji, color, btn_texto } = req.body;
+    const { data, error } = await supabase
+      .from('ofertas')
+      .update({ activo, titulo, subtitulo, emoji, color, btn_texto })
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Oferta actualizada', oferta: data[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Eliminar oferta
+app.delete('/ofertas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('ofertas')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ mensaje: '✅ Oferta eliminada' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
