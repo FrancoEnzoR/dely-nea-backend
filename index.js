@@ -708,6 +708,39 @@ app.delete('/ofertas/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Registro de comercio
+app.post('/comercios/registro', async (req, res) => {
+  try {
+    const {
+      nombre, email, telefono, direccion, descripcion,
+      cuit, password, categoria_principal,
+      tiene_foto_local, tiene_logo, tiene_documento
+    } = req.body;
+
+    const passwordEncriptada = await bcrypt.hash(password, 10);
+
+    const { data, error } = await supabase
+      .from('comercios')
+      .insert([{
+        nombre, email, telefono, direccion, descripcion,
+        cuit, password: passwordEncriptada,
+        categoria_principal,
+        tiene_foto_local, tiene_logo, tiene_documento,
+        activo: false,
+        estado: 'pendiente',
+      }])
+      .select();
+
+    if (error) throw error;
+
+    res.json({
+      mensaje: '✅ Comercio registrado exitosamente',
+      id: data[0].id,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
