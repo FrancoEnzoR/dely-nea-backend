@@ -741,6 +741,38 @@ app.post('/comercios/registro', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Admin - ver todos los comercios
+app.get('/admin/comercios', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('comercios')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ comercios: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin - cambiar estado comercio
+app.patch('/admin/comercios/:id/estado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    const activo = estado === 'aprobado';
+    const { data, error } = await supabase
+      .from('comercios')
+      .update({ estado, activo })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: `✅ Comercio ${estado}`, comercio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
