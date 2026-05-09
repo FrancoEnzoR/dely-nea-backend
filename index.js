@@ -183,9 +183,11 @@ app.post('/login-google', async (req, res) => {
   }
 });
 
-// Obtener todos los comercios
+// Obtener comercios ordenados por distancia
 app.get('/comercios', async (req, res) => {
   try {
+    const { lat, lng } = req.query;
+
     const { data, error } = await supabase
       .from('comercios')
       .select('*, categorias(nombre, icono)')
@@ -193,7 +195,35 @@ app.get('/comercios', async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json({ comercios: data });
+
+    let comercios = data;
+
+    if (lat && lng) {
+      const calcDistancia = (lat1, lng1, lat2, lng2) => {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return Math.round((R * c) * 10) / 10;
+      };
+
+      comercios = comercios
+        .map(c => ({
+          ...c,
+          distancia: c.latitud && c.longitud
+            ? calcDistancia(parseFloat(lat), parseFloat(lng), c.latitud, c.longitud)
+            : 999,
+          tiempo_estimado: c.latitud && c.longitud
+            ? Math.round(calcDistancia(parseFloat(lat), parseFloat(lng), c.latitud, c.longitud) / 40 * 60) + ' min'
+            : null
+        }))
+        .sort((a, b) => a.distancia - b.distancia);
+    }
+
+    res.json({ comercios });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
