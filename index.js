@@ -803,6 +803,69 @@ app.patch('/admin/comercios/:id/estado', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Obtener mensajes de un chat
+app.get('/mensajes/:pedido_id/:tipo', async (req, res) => {
+  try {
+    const { pedido_id, tipo } = req.params;
+    const { data, error } = await supabase
+      .from('mensajes')
+      .select('*')
+      .eq('pedido_id', pedido_id)
+      .eq('receptor_tipo', tipo)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json({ mensajes: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Enviar mensaje
+app.post('/mensajes', async (req, res) => {
+  try {
+    const { pedido_id, emisor_id, emisor_tipo, receptor_tipo, contenido } = req.body;
+    const { data, error } = await supabase
+      .from('mensajes')
+      .insert([{ pedido_id, emisor_id, emisor_tipo, receptor_tipo, contenido }])
+      .select();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Mensaje enviado', data: data[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Marcar mensajes como leídos
+app.patch('/mensajes/leer/:pedido_id', async (req, res) => {
+  try {
+    const { pedido_id } = req.params;
+    const { receptor_tipo } = req.body;
+    await supabase
+      .from('mensajes')
+      .update({ leido: true })
+      .eq('pedido_id', pedido_id)
+      .eq('receptor_tipo', receptor_tipo);
+    res.json({ mensaje: '✅ Mensajes leídos' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener todos los chats de soporte para el admin
+app.get('/admin/chats/soporte', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('mensajes')
+      .select('*, pedidos(id, usuario_id, comercio_id, estado, total)')
+      .eq('receptor_tipo', 'soporte')
+      .eq('leido', false)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ mensajes: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
