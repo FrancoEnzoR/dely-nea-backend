@@ -866,6 +866,71 @@ app.get('/admin/chats/soporte', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Dely IA - Asistente de servicios técnicos
+app.post('/dely-servicios', async (req, res) => {
+  try {
+    const { mensaje, categoria, tiene_imagen } = req.body;
+    const p = (mensaje || '').toLowerCase();
+
+    let respuesta = '';
+
+    if (categoria) {
+      respuesta = `¡Perfecto! Estás buscando un **${categoria}**. 🔧\n\n` +
+        `Para encontrarte el mejor profesional disponible necesito saber:\n\n` +
+        `1. ¿Cuál es exactamente el problema?\n` +
+        `2. ¿En qué zona de Resistencia estás?\n` +
+        `3. ¿Es urgente o podés esperar?\n\n` +
+        `Contame y te busco el técnico ideal. 💪`;
+    } else if (tiene_imagen) {
+      respuesta = `¡Gracias por la foto! 📸\n\n` +
+        `Basándome en lo que describís, parece que necesitás un **técnico especializado**.\n\n` +
+        `¿Podés contarme más sobre el problema? Por ejemplo:\n` +
+        `• ¿Cuándo empezó?\n` +
+        `• ¿Ya intentaste alguna solución?\n` +
+        `• ¿Es en un local o vivienda?\n\n` +
+        `Así puedo recomendarte el profesional correcto. 🎯`;
+    } else if (p.includes('agua') || p.includes('caño') || p.includes('pérdida') || p.includes('perdida') || p.includes('plom')) {
+      respuesta = `Parece un problema de **plomería** 🔧\n\n` +
+        `Te recomiendo un plomero. En Dely Nea tenemos profesionales verificados disponibles en tu zona.\n\n` +
+        `¿Querés que te conecte con un plomero ahora? Contame tu dirección y lo coordinamos. 📍`;
+    } else if (p.includes('luz') || p.includes('electr') || p.includes('corto') || p.includes('enchufe') || p.includes('cable')) {
+      respuesta = `Parece un problema **eléctrico** ⚡\n\n` +
+        `Te recomiendo un electricista matriculado. Es importante no intentar arreglarlo solo por seguridad.\n\n` +
+        `¿Es una emergencia o puede esperar? Así coordino el horario. ⏰`;
+    } else if (p.includes('gas') || p.includes('calefon') || p.includes('calefactor') || p.includes('estufa')) {
+      respuesta = `Parece un problema de **gas** 🔥\n\n` +
+        `⚠️ **Importante:** Si sentís olor a gas, abrí las ventanas y salí del lugar.\n\n` +
+        `Te conecto con un gasista matriculado urgente. ¿Cuál es tu dirección? 📍`;
+    } else if (p.includes('pintur') || p.includes('pared') || p.includes('humedad') || p.includes('pintar')) {
+      respuesta = `Parece que necesitás un **pintor** 🎨\n\n` +
+        `Tenemos pintores con experiencia en viviendas y locales comerciales.\n\n` +
+        `¿Es interior, exterior o ambos? ¿Cuántos metros aproximadamente? Así te doy un presupuesto estimado. 📐`;
+    } else if (p.includes('pc') || p.includes('computadora') || p.includes('notebook') || p.includes('virus') || p.includes('lento')) {
+      respuesta = `Parece un problema de **computadora** 🖥️\n\n` +
+        `Tenemos técnicos en PC con servicio a domicilio en toda Resistencia.\n\n` +
+        `¿El problema es con el hardware (no enciende, pantalla rota) o software (virus, lento, sistema)? 💻`;
+    } else if (p.includes('limpieza') || p.includes('limpiar') || p.includes('ordenar')) {
+      respuesta = `¡Perfecto! Tenemos servicios de **limpieza** 🧹\n\n` +
+        `Podemos coordinar:\n` +
+        `• Limpieza de hogar\n` +
+        `• Limpieza de oficina\n` +
+        `• Limpieza post obra\n\n` +
+        `¿Cuántos ambientes aproximadamente? ¿Qué día te viene mejor? 📅`;
+    } else {
+      respuesta = `Entendido! 🤖\n\n` +
+        `Para ayudarte mejor, seleccioná la categoría del servicio que necesitás arriba ☝️\n\n` +
+        `O contame más detalles del problema y te recomiendo el profesional ideal:\n` +
+        `• ¿Qué está pasando exactamente?\n` +
+        `• ¿En qué parte de tu casa/local?\n` +
+        `• ¿Es urgente?\n\n` +
+        `También podés mandarme una **foto** 📷 del problema para que pueda ayudarte mejor.`;
+    }
+
+    res.json({ respuesta });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
