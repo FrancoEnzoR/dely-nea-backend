@@ -931,6 +931,153 @@ app.post('/dely-servicios', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Crear solicitud de servicio técnico
+app.post('/servicios', async (req, res) => {
+  try {
+    const { cliente_id, categoria, descripcion, direccion, latitud, longitud } = req.body;
+
+    // Generar código de 4 dígitos
+    const codigo = Math.floor(1000 + Math.random() * 9000).toString();
+
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .insert([{
+        cliente_id, categoria, descripcion,
+        direccion, latitud, longitud,
+        estado: 'solicitado',
+        codigo_confirmacion: codigo,
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      mensaje: '✅ Solicitud de servicio creada',
+      servicio: data,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener servicios de un cliente
+app.get('/servicios/cliente/:cliente_id', async (req, res) => {
+  try {
+    const { cliente_id } = req.params;
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .select('*')
+      .eq('cliente_id', cliente_id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ servicios: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener todos los servicios para el admin
+app.get('/admin/servicios', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ servicios: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Actualizar estado del servicio
+app.patch('/servicios/:id/estado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado, tecnico_id } = req.body;
+    const updates = { estado, updated_at: new Date() };
+    if (tecnico_id) updates.tecnico_id = tecnico_id;
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: `✅ Estado actualizado a ${estado}`, servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Técnico envía presupuesto
+app.patch('/servicios/:id/presupuesto', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { presupuesto } = req.body;
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .update({ presupuesto, estado: 'presupuestado', updated_at: new Date() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Presupuesto enviado', servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cliente aprueba o rechaza presupuesto
+app.patch('/servicios/:id/aprobar-presupuesto', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { aprobado } = req.body;
+    const estado = aprobado ? 'asignado' : 'solicitado';
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .update({
+        presupuesto_aprobado: aprobado,
+        estado,
+        updated_at: new Date()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: aprobado ? '✅ Presupuesto aprobado' : '❌ Presupuesto rechazado', servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Confirmar entrega con código
+app.patch('/servicios/:id/confirmar', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { codigo } = req.body;
+    const { data: servicio } = await supabase
+      .from('servicios_tecnicos')
+      .select('codigo_confirmacion')
+      .eq('id', id)
+      .single();
+    if (!servicio) return res.status(404).json({ error: 'Servicio no encontrado' });
+    if (servicio.codigo_confirmacion !== codigo) {
+      return res.status(400).json({ error: '❌ Código incorrecto' });
+    }
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .update({ estado: 'finalizado', updated_at: new Date() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Servicio confirmado y finalizado', servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
