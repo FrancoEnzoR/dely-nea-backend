@@ -866,67 +866,83 @@ app.get('/admin/chats/soporte', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Dely IA - Asistente de servicios técnicos
+// Dely IA - Asistente de servicios técnicos con detección de categoría y guardado en DB
 app.post('/dely-servicios', async (req, res) => {
   try {
-    const { mensaje, categoria, tiene_imagen } = req.body;
+    const { mensaje, categoria, tiene_imagen, cliente_id, cliente_nombre } = req.body;
+
+    const CATEGORIAS = ['Plomería','Electricidad','Pintura','Gasista','Refrigeración','Mecánica','Limpieza','Piletero','Carpintería','Cerrajería','Técnico PC','Antenas/TV'];
+
     const p = (mensaje || '').toLowerCase();
-
     let respuesta = '';
+    let categoriaDetectada = categoria || null;
+    let requiereAtencion = false;
 
-    if (categoria) {
-      respuesta = `¡Perfecto! Estás buscando un **${categoria}**. 🔧\n\n` +
-        `Para encontrarte el mejor profesional disponible necesito saber:\n\n` +
-        `1. ¿Cuál es exactamente el problema?\n` +
-        `2. ¿En qué zona de Resistencia estás?\n` +
-        `3. ¿Es urgente o podés esperar?\n\n` +
-        `Contame y te busco el técnico ideal. 💪`;
-    } else if (tiene_imagen) {
-      respuesta = `¡Gracias por la foto! 📸\n\n` +
-        `Basándome en lo que describís, parece que necesitás un **técnico especializado**.\n\n` +
-        `¿Podés contarme más sobre el problema? Por ejemplo:\n` +
-        `• ¿Cuándo empezó?\n` +
-        `• ¿Ya intentaste alguna solución?\n` +
-        `• ¿Es en un local o vivienda?\n\n` +
-        `Así puedo recomendarte el profesional correcto. 🎯`;
-    } else if (p.includes('agua') || p.includes('caño') || p.includes('pérdida') || p.includes('perdida') || p.includes('plom')) {
-      respuesta = `Parece un problema de **plomería** 🔧\n\n` +
-        `Te recomiendo un plomero. En Dely Nea tenemos profesionales verificados disponibles en tu zona.\n\n` +
-        `¿Querés que te conecte con un plomero ahora? Contame tu dirección y lo coordinamos. 📍`;
-    } else if (p.includes('luz') || p.includes('electr') || p.includes('corto') || p.includes('enchufe') || p.includes('cable')) {
-      respuesta = `Parece un problema **eléctrico** ⚡\n\n` +
-        `Te recomiendo un electricista matriculado. Es importante no intentar arreglarlo solo por seguridad.\n\n` +
-        `¿Es una emergencia o puede esperar? Así coordino el horario. ⏰`;
-    } else if (p.includes('gas') || p.includes('calefon') || p.includes('calefactor') || p.includes('estufa')) {
-      respuesta = `Parece un problema de **gas** 🔥\n\n` +
-        `⚠️ **Importante:** Si sentís olor a gas, abrí las ventanas y salí del lugar.\n\n` +
-        `Te conecto con un gasista matriculado urgente. ¿Cuál es tu dirección? 📍`;
-    } else if (p.includes('pintur') || p.includes('pared') || p.includes('humedad') || p.includes('pintar')) {
-      respuesta = `Parece que necesitás un **pintor** 🎨\n\n` +
-        `Tenemos pintores con experiencia en viviendas y locales comerciales.\n\n` +
-        `¿Es interior, exterior o ambos? ¿Cuántos metros aproximadamente? Así te doy un presupuesto estimado. 📐`;
-    } else if (p.includes('pc') || p.includes('computadora') || p.includes('notebook') || p.includes('virus') || p.includes('lento')) {
-      respuesta = `Parece un problema de **computadora** 🖥️\n\n` +
-        `Tenemos técnicos en PC con servicio a domicilio en toda Resistencia.\n\n` +
-        `¿El problema es con el hardware (no enciende, pantalla rota) o software (virus, lento, sistema)? 💻`;
-    } else if (p.includes('limpieza') || p.includes('limpiar') || p.includes('ordenar')) {
-      respuesta = `¡Perfecto! Tenemos servicios de **limpieza** 🧹\n\n` +
-        `Podemos coordinar:\n` +
-        `• Limpieza de hogar\n` +
-        `• Limpieza de oficina\n` +
-        `• Limpieza post obra\n\n` +
-        `¿Cuántos ambientes aproximadamente? ¿Qué día te viene mejor? 📅`;
-    } else {
-      respuesta = `Entendido! 🤖\n\n` +
-        `Para ayudarte mejor, seleccioná la categoría del servicio que necesitás arriba ☝️\n\n` +
-        `O contame más detalles del problema y te recomiendo el profesional ideal:\n` +
-        `• ¿Qué está pasando exactamente?\n` +
-        `• ¿En qué parte de tu casa/local?\n` +
-        `• ¿Es urgente?\n\n` +
-        `También podés mandarme una **foto** 📷 del problema para que pueda ayudarte mejor.`;
+    // Detección por palabras clave
+    if (!categoriaDetectada) {
+      if (p.includes('agua') || p.includes('caño') || p.includes('pérdida') || p.includes('perdida') || p.includes('plom') || p.includes('caneria') || p.includes('cañeria')) {
+        categoriaDetectada = 'Plomería';
+      } else if (p.includes('luz') || p.includes('electr') || p.includes('corto') || p.includes('enchufe') || p.includes('cable') || p.includes('toma')) {
+        categoriaDetectada = 'Electricidad';
+      } else if (p.includes('gas') || p.includes('calefon') || p.includes('calefactor') || p.includes('estufa')) {
+        categoriaDetectada = 'Gasista';
+        if (p.includes('olor') || p.includes('escape')) requiereAtencion = true;
+      } else if (p.includes('pintur') || p.includes('pared') || p.includes('humedad') || p.includes('pintar')) {
+        categoriaDetectada = 'Pintura';
+      } else if (p.includes('pc') || p.includes('computadora') || p.includes('notebook') || p.includes('virus') || p.includes('lento')) {
+        categoriaDetectada = 'Técnico PC';
+      } else if (p.includes('limpieza') || p.includes('limpiar')) {
+        categoriaDetectada = 'Limpieza';
+      } else if (p.includes('aire') || p.includes('frio') || p.includes('calor') || p.includes('heladera') || p.includes('freezer')) {
+        categoriaDetectada = 'Refrigeración';
+      } else if (p.includes('puerta') || p.includes('mueble') || p.includes('madera') || p.includes('carpint')) {
+        categoriaDetectada = 'Carpintería';
+      } else if (p.includes('cerradura') || p.includes('llave') || p.includes('cerraj')) {
+        categoriaDetectada = 'Cerrajería';
+      } else if (p.includes('pileta') || p.includes('piscina')) {
+        categoriaDetectada = 'Piletero';
+      } else if (p.includes('antena') || p.includes('television') || p.includes('tv') || p.includes('cable')) {
+        categoriaDetectada = 'Antenas/TV';
+      } else if (p.includes('auto') || p.includes('moto') || p.includes('mecanica') || p.includes('mecanic')) {
+        categoriaDetectada = 'Mecánica';
+      }
     }
 
-    res.json({ respuesta });
+    // Generar respuesta según contexto
+    if (requiereAtencion) {
+      respuesta = `⚠️ Parece una situación urgente relacionada con gas.\n\nSi sentís olor a gas, abrí las ventanas y salí del lugar inmediatamente.\n\nTe estoy conectando con un gasista matriculado urgente. Un momento. 🔥`;
+    } else if (categoriaDetectada && categoriaDetectada !== categoria) {
+      // IA detectó categoría automáticamente
+      respuesta = `Entiendo tu problema. Parece que necesitás un técnico de **${categoriaDetectada}** 🔧\n\nSeleccioné esa categoría por vos. Ahora contame más detalles:\n• ¿Cuándo empezó el problema?\n• ¿Ya intentaste alguna solución?\n• ¿Es urgente?\n\nAsí puedo mandarte el mejor profesional disponible. 💪`;
+    } else if (categoriaDetectada) {
+      respuesta = `¡Perfecto! Estás buscando un técnico de **${categoriaDetectada}**.\n\nPara encontrarte el mejor profesional disponible contame:\n• ¿Cuál es exactamente el problema?\n• ¿Es urgente o podés esperar?\n\n¡Cuando estés listo tocá "Enviar solicitud" y buscamos el técnico más cercano! 📍`;
+    } else if (tiene_imagen) {
+      respuesta = `¡Gracias por la foto! 📸\n\nBasándome en tu imagen voy a necesitar un poco más de info:\n• ¿Cuándo empezó?\n• ¿Ya intentaste alguna solución?\n• ¿Es en un local o vivienda?\n\nAsí puedo recomendarte el profesional correcto. 🎯`;
+    } else {
+      requiereAtencion = true;
+      respuesta = `Hola! 👋 Soy Dely, tu asistente de servicios.\n\nContame qué problema tenés y te ayudo a encontrar el técnico ideal. Por ejemplo:\n• "Tengo una pérdida de agua en el baño"\n• "Se me cortó la luz en un cuarto"\n• "El calefón no enciende"\n\nO también podés seleccionar la categoría arriba ☝️ y mandarme una foto 📷 del problema.`;
+    }
+
+    // Guardar conversación en DB
+    try {
+      await supabase.from('conversaciones_ia').insert([{
+        cliente_id: cliente_id || null,
+        cliente_nombre: cliente_nombre || 'Anonimo',
+        mensaje,
+        respuesta_ia: respuesta,
+        categoria_detectada: categoriaDetectada,
+        requiere_atencion: requiereAtencion,
+        leido_admin: false,
+      }]);
+    } catch (dbError) {
+      console.log('Error guardando conversacion:', dbError);
+    }
+
+    res.json({
+      respuesta,
+      categoria_detectada: categoriaDetectada,
+      requiere_atencion: requiereAtencion,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
