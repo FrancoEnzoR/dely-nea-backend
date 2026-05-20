@@ -996,6 +996,21 @@ app.post('/servicios', async (req, res) => {
   }
 });
 
+// Obtener un servicio por su ID
+app.get('/servicios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    res.json({ servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Obtener servicios de un cliente
 app.get('/servicios/cliente/:cliente_id', async (req, res) => {
   try {
