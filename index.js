@@ -866,84 +866,103 @@ app.get('/admin/chats/soporte', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Dely IA - Asistente de servicios técnicos con detección de categoría y guardado en DB
+// Dely IA — Con Claude API real y memoria de conversación
 app.post('/dely-servicios', async (req, res) => {
   try {
-    const { mensaje, categoria, tiene_imagen, cliente_id, cliente_nombre } = req.body;
+    const { mensaje, categoria, tiene_imagen, cliente_id, cliente_nombre, historial_chat } = req.body;
 
     const CATEGORIAS = ['Plomería','Electricidad','Pintura','Gasista','Refrigeración','Mecánica','Limpieza','Piletero','Carpintería','Cerrajería','Técnico PC','Antenas/TV'];
 
-    const p = (mensaje || '').toLowerCase();
-    let respuesta = '';
-    let categoriaDetectada = categoria || null;
-    let requiereAtencion = false;
+    const systemPrompt = `Sos Dely, la asistente virtual de Dely Nea, una plataforma de servicios técnicos a domicilio en Resistencia, Chaco, Argentina.
 
-    // Detección por palabras clave
-    if (!categoriaDetectada) {
-      if (p.includes('agua') || p.includes('caño') || p.includes('pérdida') || p.includes('perdida') || p.includes('plom') || p.includes('caneria') || p.includes('cañeria')) {
-        categoriaDetectada = 'Plomería';
-      } else if (p.includes('luz') || p.includes('electr') || p.includes('corto') || p.includes('enchufe') || p.includes('cable') || p.includes('toma')) {
-        categoriaDetectada = 'Electricidad';
-      } else if (p.includes('gas') || p.includes('calefon') || p.includes('calefactor') || p.includes('estufa')) {
-        categoriaDetectada = 'Gasista';
-        if (p.includes('olor') || p.includes('escape')) requiereAtencion = true;
-      } else if (p.includes('pintur') || p.includes('pared') || p.includes('humedad') || p.includes('pintar')) {
-        categoriaDetectada = 'Pintura';
-      } else if (p.includes('pc') || p.includes('computadora') || p.includes('notebook') || p.includes('virus') || p.includes('lento')) {
-        categoriaDetectada = 'Técnico PC';
-      } else if (p.includes('limpieza') || p.includes('limpiar')) {
-        categoriaDetectada = 'Limpieza';
-      } else if (p.includes('aire') || p.includes('frio') || p.includes('calor') || p.includes('heladera') || p.includes('freezer')) {
-        categoriaDetectada = 'Refrigeración';
-      } else if (p.includes('puerta') || p.includes('mueble') || p.includes('madera') || p.includes('carpint')) {
-        categoriaDetectada = 'Carpintería';
-      } else if (p.includes('cerradura') || p.includes('llave') || p.includes('cerraj')) {
-        categoriaDetectada = 'Cerrajería';
-      } else if (p.includes('pileta') || p.includes('piscina')) {
-        categoriaDetectada = 'Piletero';
-      } else if (p.includes('antena') || p.includes('television') || p.includes('tv') || p.includes('cable')) {
-        categoriaDetectada = 'Antenas/TV';
-      } else if (p.includes('auto') || p.includes('moto') || p.includes('mecanica') || p.includes('mecanic')) {
-        categoriaDetectada = 'Mecánica';
+Tu personalidad: amigable, cálida, natural. Hablás en español rioplatense (usás "vos", "te", "podés"). No sos robótica ni repetitiva. Respondés de forma conversacional y breve (máximo 3-4 oraciones por respuesta).
+
+Tu objetivo: ayudar al cliente a describir su problema y determinar qué técnico necesita. Hacés preguntas naturales para entender mejor el problema, como lo haría un amigo que te ayuda.
+
+Categorías disponibles: ${CATEGORIAS.join(', ')}.
+
+Reglas importantes:
+- Si identificás claramente la categoría, indicalo al final con exactamente este formato: CATEGORIA: [nombre]
+- Si el cliente parece confundido, angustiado o tiene una emergencia (olor a gas, inundación, cortocircuito con riesgo), indicalo con: URGENTE: true
+- NO repitas siempre las mismas preguntas. Adaptate a lo que te dice el cliente.
+- Si el cliente ya describió bien el problema, no le pidas más info innecesaria. Confirmá que entendiste y decile que puede enviar la solicitud.
+- Si la situación involucra gas con riesgo, recordale que abra ventanas y salga antes de todo.
+- Nunca rompas el personaje. Sos Dely, no una IA genérica.
+${categoria ? `\nEl cliente ya seleccionó la categoría: ${categoria}. Ayudalo a describir mejor el problema para esa categoría.` : ''}`;
+
+    // Armar historial para Claude
+    const mensajesAPI = [];
+
+    if (historial_chat && historial_chat.length > 0) {
+      for (const msg of historial_chat) {
+        if (msg.tipo === 'usuario' && msg.contenido) {
+          mensajesAPI.push({ role: 'user', content: msg.contenido });
+        } else if (msg.tipo === 'ia' && msg.contenido) {
+          mensajesAPI.push({ role: 'assistant', content: msg.contenido });
+        }
       }
     }
 
-    // Generar respuesta según contexto
-    if (requiereAtencion) {
-      respuesta = `⚠️ Parece una situación urgente relacionada con gas.\n\nSi sentís olor a gas, abrí las ventanas y salí del lugar inmediatamente.\n\nTe estoy conectando con un gasista matriculado urgente. Un momento. 🔥`;
-    } else if (categoriaDetectada && categoriaDetectada !== categoria) {
-      // IA detectó categoría automáticamente
-      respuesta = `Entiendo tu problema. Parece que necesitás un técnico de **${categoriaDetectada}** 🔧\n\nSeleccioné esa categoría por vos. Ahora contame más detalles:\n• ¿Cuándo empezó el problema?\n• ¿Ya intentaste alguna solución?\n• ¿Es urgente?\n\nAsí puedo mandarte el mejor profesional disponible. 💪`;
-    } else if (categoriaDetectada) {
-      respuesta = `¡Perfecto! Estás buscando un técnico de **${categoriaDetectada}**.\n\nPara encontrarte el mejor profesional disponible contame:\n• ¿Cuál es exactamente el problema?\n• ¿Es urgente o podés esperar?\n\n¡Cuando estés listo tocá "Enviar solicitud" y buscamos el técnico más cercano! 📍`;
-    } else if (tiene_imagen) {
-      respuesta = `¡Gracias por la foto! 📸\n\nBasándome en tu imagen voy a necesitar un poco más de info:\n• ¿Cuándo empezó?\n• ¿Ya intentaste alguna solución?\n• ¿Es en un local o vivienda?\n\nAsí puedo recomendarte el profesional correcto. 🎯`;
-    } else {
-      requiereAtencion = true;
-      respuesta = `Hola! 👋 Soy Dely, tu asistente de servicios.\n\nContame qué problema tenés y te ayudo a encontrar el técnico ideal. Por ejemplo:\n• "Tengo una pérdida de agua en el baño"\n• "Se me cortó la luz en un cuarto"\n• "El calefón no enciende"\n\nO también podés seleccionar la categoría arriba ☝️ y mandarme una foto 📷 del problema.`;
+    // Agregar el mensaje actual
+    mensajesAPI.push({ role: 'user', content: tiene_imagen ? `${mensaje} [El cliente adjuntó una foto del problema]` : mensaje });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        system: systemPrompt,
+        messages: mensajesAPI,
+      }),
+    });
+
+    const data = await response.json();
+    let respuestaRaw = data.content?.[0]?.text || 'No pude procesar tu consulta. Intentá de nuevo.';
+
+    // Extraer categoría detectada si la hay
+    let categoriaDetectada = categoria || null;
+    let esUrgente = false;
+
+    const matchCategoria = respuestaRaw.match(/CATEGORIA:\s*(.+)/i);
+    if (matchCategoria) {
+      categoriaDetectada = matchCategoria[1].trim();
+      respuestaRaw = respuestaRaw.replace(/CATEGORIA:.+/gi, '').trim();
     }
 
-    // Guardar conversación en DB
+    const matchUrgente = respuestaRaw.match(/URGENTE:\s*true/i);
+    if (matchUrgente) {
+      esUrgente = true;
+      respuestaRaw = respuestaRaw.replace(/URGENTE:.+/gi, '').trim();
+    }
+
+    // Guardar en DB
     try {
       await supabase.from('conversaciones_ia').insert([{
         cliente_id: cliente_id || null,
         cliente_nombre: cliente_nombre || 'Anonimo',
         mensaje,
-        respuesta_ia: respuesta,
+        respuesta_ia: respuestaRaw,
         categoria_detectada: categoriaDetectada,
-        requiere_atencion: requiereAtencion,
+        requiere_atencion: esUrgente,
         leido_admin: false,
       }]);
-    } catch (dbError) {
-      console.log('Error guardando conversacion:', dbError);
+    } catch (dbErr) {
+      console.log('Error guardando conversacion:', dbErr);
     }
 
     res.json({
-      respuesta,
+      respuesta: respuestaRaw,
       categoria_detectada: categoriaDetectada,
-      requiere_atencion: requiereAtencion,
+      requiere_atencion: esUrgente,
     });
+
   } catch (error) {
+    console.error('Error dely-servicios:', error);
     res.status(500).json({ error: error.message });
   }
 });
