@@ -1128,6 +1128,86 @@ app.patch('/servicios/:id/confirmar', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Actualizar pausa del servicio
+app.patch('/servicios/:id/pausa', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fecha_pausa, modificado_por } = req.body;
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .update({
+        estado_trabajo: 'pausado',
+        estado: 'pausado',
+        fecha_pausa,
+        pausa_modificada_por: modificado_por,
+        updated_at: new Date(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Trabajo pausado', servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Actualizar estado de trabajo (en_curso, pausado, finalizado)
+app.patch('/servicios/:id/estado-trabajo', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado_trabajo, fecha_pausa, modificado_por } = req.body;
+    const updates = {
+      estado_trabajo,
+      updated_at: new Date(),
+    };
+    if (estado_trabajo === 'finalizado') updates.estado = 'finalizado';
+    if (estado_trabajo === 'pausado') {
+      updates.estado = 'pausado';
+      updates.fecha_pausa = fecha_pausa;
+      updates.pausa_modificada_por = modificado_por;
+    }
+    if (estado_trabajo === 'en_proceso') updates.estado = 'en_curso';
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Estado actualizado', servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Crear servicio con tipo (urgente o agendado)
+app.post('/servicios/agendar', async (req, res) => {
+  try {
+    const { cliente_id, categoria, descripcion, direccion, latitud, longitud, tipo_solicitud, fecha_agendada } = req.body;
+    const codigo = Math.floor(1000 + Math.random() * 9000).toString();
+    const { data, error } = await supabase
+      .from('servicios_tecnicos')
+      .insert([{
+        cliente_id,
+        categoria,
+        descripcion,
+        direccion,
+        latitud,
+        longitud,
+        estado: 'solicitado',
+        codigo_confirmacion: codigo,
+        tipo_solicitud: tipo_solicitud || 'urgente',
+        fecha_agendada: fecha_agendada || null,
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ mensaje: '✅ Servicio creado', servicio: data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`✅ Dely Nea corriendo en http://localhost:${PORT}`);
